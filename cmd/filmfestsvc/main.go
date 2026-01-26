@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -16,6 +18,13 @@ func main() {
 }
 
 func run() error {
-	log.Info().Msg("Hi!")
-	return nil
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	log.Info().Msg("starting server on :8080")
+	return http.ListenAndServe(":8080", mux)
 }
