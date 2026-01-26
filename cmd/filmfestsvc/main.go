@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -34,9 +33,7 @@ func run() error {
 	g, ctx := errgroup.WithContext(ctx)
 
 	// Setup and start the HTTP server.
-	if err := serve(ctx, g); err != nil {
-		return err
-	}
+	serve(ctx, g, stop)
 
 	// Wait for all goroutines in the group to finish.
 	if err := g.Wait(); err != nil {
@@ -47,7 +44,7 @@ func run() error {
 	return nil
 }
 
-func serve(ctx context.Context, g *errgroup.Group) error {
+func serve(ctx context.Context, g *errgroup.Group, stop context.CancelFunc) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
 
@@ -56,18 +53,14 @@ func serve(ctx context.Context, g *errgroup.Group) error {
 		Handler: mux,
 	}
 
-	// Create a listener so we can return an error if the server cannot start (e.g. port in use).
-	ln, err := net.Listen("tcp", srv.Addr)
-	if err != nil {
-		return fmt.Errorf("failed to listen on %s: %w", srv.Addr, err)
-	}
-
 	// Start the HTTP server in the workgroup.
 	g.Go(func() error {
 		log.Info().Msgf("starting server on %s", srv.Addr)
-		// Serve blocks until the server is closed or an error occurs.
-		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			return fmt.Errorf("HTTP server Serve: %w", err)
+		// ListenAndServe blocks until the server is closed or an error occurs.
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			// If the server fails to start or run, close the signal context.
+			stop()
+			return fmt.Errorf("HTTP server ListenAndServe: %w", err)
 		}
 		return nil
 	})
@@ -87,8 +80,6 @@ func serve(ctx context.Context, g *errgroup.Group) error {
 		}
 		return nil
 	})
-
-	return nil
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
