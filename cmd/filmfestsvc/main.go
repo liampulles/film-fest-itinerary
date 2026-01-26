@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -24,8 +25,14 @@ func main() {
 }
 
 func run() error {
-	mux := http.NewServeMux()
+	// Create a context that is canceled when an interrupt signal is received.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
+	// Create an errgroup to manage goroutines and their shared lifecycle.
+	g, ctx := errgroup.WithContext(ctx)
+
+	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler)
 
 	srv := &http.Server{
@@ -33,30 +40,35 @@ func run() error {
 		Handler: mux,
 	}
 
-	// Create a channel to listen for OS signals for graceful shutdown.
-	// We listen for SIGINT (Ctrl+C) and SIGTERM (termination signal).
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	// Run the server in a goroutine so that it doesn't block the signal listener.
-	go func() {
+	// Start the HTTP server in the workgroup.
+	g.Go(func() error {
 		log.Info().Msg("starting server on :8080")
+		// ListenAndServe blocks until the server is closed or an error occurs.
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error().Err(err).Msg("HTTP server ListenAndServe failed")
+			return fmt.Errorf("HTTP server ListenAndServe: %w", err)
 		}
-	}()
+		return nil
+	})
 
-	// Block until a signal is received.
-	sig := <-stop
-	log.Info().Str("signal", sig.String()).Msg("shutting down server")
+	// Handle graceful shutdown in the workgroup.
+	g.Go(func() error {
+		// Wait for the context to be canceled (via signal or error in another goroutine).
+		<-ctx.Done()
+		log.Info().Msg("shutting down server")
 
-	// Create a context with a timeout to give the server time to close active connections.
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+		// Use a separate context with a timeout for the shutdown process.
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 
-	// Attempt to gracefully shut down the server.
-	if err := srv.Shutdown(ctx); err != nil {
-		return fmt.Errorf("server shutdown failed: %w", err)
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("server shutdown failed: %w", err)
+		}
+		return nil
+	})
+
+	// Wait for all goroutines in the group to finish.
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	log.Info().Msg("server gracefully stopped")

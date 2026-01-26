@@ -2,7 +2,10 @@ module github.com/liampulles/film-fest-itinerary
 
 go 1.24.5
 
-require github.com/rs/zerolog v1.34.0
+require (
+	github.com/rs/zerolog v1.34.0
+	golang.org/x/sync v0.11.0
+)
 
 require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
