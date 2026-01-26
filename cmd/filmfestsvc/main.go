@@ -9,6 +9,7 @@ func main() {
 	// Setup zerolog
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
+	// Delegate to run func.
 	if err := run(); err != nil {
 		log.Fatal().Err(err).Msg("application failed")
 	}
