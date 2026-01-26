@@ -25,21 +25,18 @@ func main() {
 }
 
 func run() error {
-	// Create a context that is canceled when an interrupt signal is received.
+	// Setup context and errgroup
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-
-	// Create an errgroup to manage goroutines and their shared lifecycle.
 	g, ctx := errgroup.WithContext(ctx)
 
 	// Setup and start the HTTP server.
 	serve(ctx, g, stop)
 
-	// Wait for all goroutines in the group to finish.
+	// Wait for all goroutines in the group to exit.
 	if err := g.Wait(); err != nil {
 		return err
 	}
-
 	log.Info().Msg("server gracefully stopped")
 	return nil
 }
