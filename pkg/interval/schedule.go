@@ -19,6 +19,26 @@ type ScheduleEntry[K comparable, T cmp.Ordered] struct {
 	Key K
 }
 
+// Equals checks if two schedules contain the same entries, regardless of order.
+func (s Schedule[K, T]) Equals(other Schedule[K, T]) bool {
+	if len(s) != len(other) {
+		return false
+	}
+	for _, entryA := range s {
+		match := false
+		for _, entryB := range other {
+			if entryA.Key == entryB.Key && entryA.Interval == entryB.Interval {
+				match = true
+				break
+			}
+		}
+		if !match {
+			return false
+		}
+	}
+	return true
+}
+
 // This is the GISMP variant of the interval scheduling problem.
 // Given a set of groups with their intervals, come up with
 // "maximal" schedules. Given two schedules, one of the schedules

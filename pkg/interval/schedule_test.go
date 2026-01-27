@@ -96,7 +96,7 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 			for _, expectedSched := range tt.want {
 				found := false
 				for _, actualSched := range got {
-					if schedulesMatch(expectedSched, actualSched) {
+					if actualSched.Equals(expectedSched) {
 						found = true
 						break
 					}
@@ -107,24 +107,4 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 			}
 		})
 	}
-}
-
-// schedulesMatch checks if two schedules contain the same entries, regardless of order.
-func schedulesMatch(a []ScheduleEntry[string, int], b Schedule[string, int]) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for _, entryA := range a {
-		match := false
-		for _, entryB := range b {
-			if entryA.Key == entryB.Key && entryA.Interval == entryB.Interval {
-				match = true
-				break
-			}
-		}
-		if !match {
-			return false
-		}
-	}
-	return true
 }
