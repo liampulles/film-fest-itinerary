@@ -108,3 +108,93 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 		})
 	}
 }
+
+func TestSchedule_Equals(t *testing.T) {
+	iv := func(start, end int) Interval[int] {
+		i, err := New(start, end)
+		if err != nil {
+			t.Fatalf("New(%v, %v) failed: %v", start, end, err)
+		}
+		return i
+	}
+
+	tests := []struct {
+		name string
+		s1   Schedule[string, int]
+		s2   Schedule[string, int]
+		want bool
+	}{
+		{
+			name: "empty schedules",
+			s1:   Schedule[string, int]{},
+			s2:   Schedule[string, int]{},
+			want: true,
+		},
+		{
+			name: "same entries same order",
+			s1: Schedule[string, int]{
+				{Key: "Math", Interval: iv(9, 10)},
+				{Key: "Science", Interval: iv(11, 12)},
+			},
+			s2: Schedule[string, int]{
+				{Key: "Math", Interval: iv(9, 10)},
+				{Key: "Science", Interval: iv(11, 12)},
+			},
+			want: true,
+		},
+		{
+			name: "same entries different order",
+			s1: Schedule[string, int]{
+				{Key: "Math", Interval: iv(9, 10)},
+				{Key: "Science", Interval: iv(11, 12)},
+			},
+			s2: Schedule[string, int]{
+				{Key: "Science", Interval: iv(11, 12)},
+				{Key: "Math", Interval: iv(9, 10)},
+			},
+			want: true,
+		},
+		{
+			name: "different lengths",
+			s1: Schedule[string, int]{
+				{Key: "Math", Interval: iv(9, 10)},
+			},
+			s2: Schedule[string, int]{
+				{Key: "Math", Interval: iv(9, 10)},
+				{Key: "Science", Interval: iv(11, 12)},
+			},
+			want: false,
+		},
+		{
+			name: "same length different keys",
+			s1: Schedule[string, int]{
+				{Key: "Math", Interval: iv(9, 10)},
+			},
+			s2: Schedule[string, int]{
+				{Key: "Science", Interval: iv(9, 10)},
+			},
+			want: false,
+		},
+		{
+			name: "same length different intervals",
+			s1: Schedule[string, int]{
+				{Key: "Math", Interval: iv(9, 10)},
+			},
+			s2: Schedule[string, int]{
+				{Key: "Math", Interval: iv(10, 11)},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s1.Equals(tt.s2); got != tt.want {
+				t.Errorf("s1.Equals(s2) = %v, want %v", got, tt.want)
+			}
+			if got := tt.s2.Equals(tt.s1); got != tt.want {
+				t.Errorf("s2.Equals(s1) = %v, want %v (symmetry check)", got, tt.want)
+			}
+		})
+	}
+}
