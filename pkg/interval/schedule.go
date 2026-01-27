@@ -12,27 +12,16 @@ type Group[K comparable, T cmp.Ordered] struct {
 // A schedule is a set of {interval, key} pairs,
 // such that no key is present more than once and no
 // intervals overlap.
-type Schedule[K comparable, T cmp.Ordered] []ScheduleEntry[K, T]
+type Schedule[K comparable, T cmp.Ordered] map[K]Interval[T]
 
-type ScheduleEntry[K comparable, T cmp.Ordered] struct {
-	Interval[T]
-	Key K
-}
-
-// Equals checks if two schedules contain the same entries, regardless of order.
+// Equals checks if two schedules contain the same entries.
 func (s Schedule[K, T]) Equals(other Schedule[K, T]) bool {
 	if len(s) != len(other) {
 		return false
 	}
-	for _, entryA := range s {
-		match := false
-		for _, entryB := range other {
-			if entryA.Key == entryB.Key && entryA.Interval == entryB.Interval {
-				match = true
-				break
-			}
-		}
-		if !match {
+	for k, v := range s {
+		vOther, ok := other[k]
+		if !ok || v != vOther {
 			return false
 		}
 	}

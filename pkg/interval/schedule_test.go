@@ -17,7 +17,7 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 	tests := []struct {
 		name   string
 		groups []Group[string, int]
-		want   [][]ScheduleEntry[string, int]
+		want   []Schedule[string, int]
 	}{
 		{
 			name: "No conflicts: Math and Science at different times",
@@ -25,10 +25,10 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 				{Key: "Math", Intervals: []Interval[int]{iv(9, 10)}},
 				{Key: "Science", Intervals: []Interval[int]{iv(11, 12)}},
 			},
-			want: [][]ScheduleEntry[string, int]{
+			want: []Schedule[string, int]{
 				{
-					{Key: "Math", Interval: iv(9, 10)},
-					{Key: "Science", Interval: iv(11, 12)},
+					"Math":    iv(9, 10),
+					"Science": iv(11, 12),
 				},
 			},
 		},
@@ -38,9 +38,9 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 				{Key: "Math", Intervals: []Interval[int]{iv(9, 11)}},
 				{Key: "History", Intervals: []Interval[int]{iv(10, 12)}},
 			},
-			want: [][]ScheduleEntry[string, int]{
-				{{Key: "Math", Interval: iv(9, 11)}},
-				{{Key: "History", Interval: iv(10, 12)}},
+			want: []Schedule[string, int]{
+				{"Math": iv(9, 11)},
+				{"History": iv(10, 12)},
 			},
 		},
 		{
@@ -55,13 +55,13 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 					Intervals: []Interval[int]{iv(9, 10)},
 				},
 			},
-			want: [][]ScheduleEntry[string, int]{
+			want: []Schedule[string, int]{
 				{
-					{Key: "Math", Interval: iv(14, 15)},
-					{Key: "Science", Interval: iv(9, 10)},
+					"Math":    iv(14, 15),
+					"Science": iv(9, 10),
 				},
 				{
-					{Key: "Math", Interval: iv(9, 10)},
+					"Math": iv(9, 10),
 				},
 			},
 		},
@@ -72,13 +72,13 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 				{Key: "Science", Intervals: []Interval[int]{iv(2, 4)}},
 				{Key: "History", Intervals: []Interval[int]{iv(3, 5)}},
 			},
-			want: [][]ScheduleEntry[string, int]{
+			want: []Schedule[string, int]{
 				{
-					{Key: "Math", Interval: iv(1, 3)},
-					{Key: "History", Interval: iv(3, 5)},
+					"Math":    iv(1, 3),
+					"History": iv(3, 5),
 				},
 				{
-					{Key: "Science", Interval: iv(2, 4)},
+					"Science": iv(2, 4),
 				},
 			},
 		},
@@ -131,57 +131,45 @@ func TestSchedule_Equals(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "same entries same order",
+			name: "same entries",
 			s1: Schedule[string, int]{
-				{Key: "Math", Interval: iv(9, 10)},
-				{Key: "Science", Interval: iv(11, 12)},
+				"Math":    iv(9, 10),
+				"Science": iv(11, 12),
 			},
 			s2: Schedule[string, int]{
-				{Key: "Math", Interval: iv(9, 10)},
-				{Key: "Science", Interval: iv(11, 12)},
-			},
-			want: true,
-		},
-		{
-			name: "same entries different order",
-			s1: Schedule[string, int]{
-				{Key: "Math", Interval: iv(9, 10)},
-				{Key: "Science", Interval: iv(11, 12)},
-			},
-			s2: Schedule[string, int]{
-				{Key: "Science", Interval: iv(11, 12)},
-				{Key: "Math", Interval: iv(9, 10)},
+				"Math":    iv(9, 10),
+				"Science": iv(11, 12),
 			},
 			want: true,
 		},
 		{
 			name: "different lengths",
 			s1: Schedule[string, int]{
-				{Key: "Math", Interval: iv(9, 10)},
+				"Math": iv(9, 10),
 			},
 			s2: Schedule[string, int]{
-				{Key: "Math", Interval: iv(9, 10)},
-				{Key: "Science", Interval: iv(11, 12)},
+				"Math":    iv(9, 10),
+				"Science": iv(11, 12),
 			},
 			want: false,
 		},
 		{
 			name: "same length different keys",
 			s1: Schedule[string, int]{
-				{Key: "Math", Interval: iv(9, 10)},
+				"Math": iv(9, 10),
 			},
 			s2: Schedule[string, int]{
-				{Key: "Science", Interval: iv(9, 10)},
+				"Science": iv(9, 10),
 			},
 			want: false,
 		},
 		{
 			name: "same length different intervals",
 			s1: Schedule[string, int]{
-				{Key: "Math", Interval: iv(9, 10)},
+				"Math": iv(9, 10),
 			},
 			s2: Schedule[string, int]{
-				{Key: "Math", Interval: iv(10, 11)},
+				"Math": iv(10, 11),
 			},
 			want: false,
 		},
