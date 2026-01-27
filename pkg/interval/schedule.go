@@ -9,7 +9,7 @@ type Group[K comparable, T cmp.Ordered] struct {
 	Intervals []Interval[T]
 }
 
-// A schedule is an ordered set of {interval, key} pairs,
+// A schedule is a set of {interval, key} pairs,
 // such that no key is present more than once and no
 // intervals overlap.
 type Schedule[K comparable, T cmp.Ordered] []ScheduleEntry[K, T]
