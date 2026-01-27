@@ -82,6 +82,52 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Nested intervals (Containment)",
+			groups: []Group[string, int]{
+				{Key: "Lecture", Intervals: []Interval[int]{iv(0, 10)}},
+				{Key: "Lab", Intervals: []Interval[int]{iv(1, 2)}},
+				{Key: "Seminar", Intervals: []Interval[int]{iv(3, 4)}},
+				{Key: "Workshop", Intervals: []Interval[int]{iv(5, 6)}},
+				{Key: "Tutorial", Intervals: []Interval[int]{iv(7, 8)}},
+			},
+			want: []Schedule[string, int]{
+				{
+					"Lecture": iv(0, 10),
+				},
+				{
+					"Lab":      iv(1, 2),
+					"Seminar":  iv(3, 4),
+					"Workshop": iv(5, 6),
+					"Tutorial": iv(7, 8),
+				},
+			},
+		},
+		{
+			name: "5 groups with complex overlaps",
+			groups: []Group[string, int]{
+				{Key: "Math", Intervals: []Interval[int]{iv(8, 10)}},
+				{Key: "Science", Intervals: []Interval[int]{iv(9, 11)}},
+				{Key: "History", Intervals: []Interval[int]{iv(10, 12)}},
+				{Key: "Art", Intervals: []Interval[int]{iv(8, 12)}},
+				{Key: "Music", Intervals: []Interval[int]{iv(13, 14)}},
+			},
+			want: []Schedule[string, int]{
+				{
+					"Math":    iv(8, 10),
+					"History": iv(10, 12),
+					"Music":   iv(13, 14),
+				},
+				{
+					"Science": iv(9, 11),
+					"Music":   iv(13, 14),
+				},
+				{
+					"Art":   iv(8, 12),
+					"Music": iv(13, 14),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
