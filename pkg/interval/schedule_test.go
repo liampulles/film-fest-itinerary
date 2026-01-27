@@ -128,6 +128,43 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "7 groups, 3 intervals each: Perfect packing vs. Long overlaps",
+			groups: []Group[string, int]{
+				{Key: "Math", Intervals: []Interval[int]{iv(0, 1), iv(0, 10), iv(0, 11)}},
+				{Key: "Science", Intervals: []Interval[int]{iv(1, 2), iv(0, 10), iv(0, 11)}},
+				{Key: "History", Intervals: []Interval[int]{iv(2, 3), iv(0, 10), iv(0, 11)}},
+				{Key: "Art", Intervals: []Interval[int]{iv(3, 4), iv(0, 10), iv(0, 11)}},
+				{Key: "Music", Intervals: []Interval[int]{iv(4, 5), iv(0, 10), iv(0, 11)}},
+				{Key: "PE", Intervals: []Interval[int]{iv(5, 6), iv(0, 10), iv(0, 11)}},
+				{Key: "English", Intervals: []Interval[int]{iv(6, 7), iv(0, 10), iv(0, 11)}},
+			},
+			want: []Schedule[string, int]{
+				{
+					"Math":    iv(0, 1),
+					"Science": iv(1, 2),
+					"History": iv(2, 3),
+					"Art":     iv(3, 4),
+					"Music":   iv(4, 5),
+					"PE":      iv(5, 6),
+					"English": iv(6, 7),
+				},
+				{"Math": iv(0, 10)},
+				{"Math": iv(0, 11)},
+				{"Science": iv(0, 10)},
+				{"Science": iv(0, 11)},
+				{"History": iv(0, 10)},
+				{"History": iv(0, 11)},
+				{"Art": iv(0, 10)},
+				{"Art": iv(0, 11)},
+				{"Music": iv(0, 10)},
+				{"Music": iv(0, 11)},
+				{"PE": iv(0, 10)},
+				{"PE": iv(0, 11)},
+				{"English": iv(0, 10)},
+				{"English": iv(0, 11)},
+			},
+		},
 	}
 
 	for _, tt := range tests {
