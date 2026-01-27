@@ -24,7 +24,7 @@ type Interval[T cmp.Ordered] struct {
 
 // Create a new Interval. Returns an error if validation fails.
 func New[T cmp.Ordered](start, end T) (Interval[T], error) {
-	if end > start {
+	if end < start {
 		return Interval[T]{}, ErrInvalidInterval
 	}
 
@@ -43,11 +43,11 @@ func (a Interval[T]) After(b Interval[T]) bool {
 }
 
 func (a Interval[T]) Touches(b Interval[T]) bool {
-	return !(a.end < b.start || b.end < a.start)
+	return a.end == b.start || b.end == a.start
 }
 
 func (a Interval[T]) Overlaps(b Interval[T]) bool {
-	return a.end > b.start || b.end > a.start
+	return a.start < b.end && b.start < a.end
 }
 
 // The relationship between two intervals is basically
