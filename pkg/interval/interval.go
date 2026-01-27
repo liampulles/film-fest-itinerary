@@ -17,6 +17,9 @@ var (
 // to end can be said to be non-overlapping.
 //
 // For ease of use, we treat Intervals as immutable.
+//
+// For using times and intervals, simply use the unix epoch
+// values.
 type Interval[T cmp.Ordered] struct {
 	start T
 	end   T
