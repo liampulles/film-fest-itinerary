@@ -270,6 +270,81 @@ func TestSchedule_Equals(t *testing.T) {
 	}
 }
 
+func TestSchedule_Overlaps(t *testing.T) {
+	iv := func(start, end int) Interval[int] {
+		i, err := New(start, end)
+		if err != nil {
+			t.Fatalf("New(%v, %v) failed: %v", start, end, err)
+		}
+		return i
+	}
+
+	tests := []struct {
+		name     string
+		schedule Schedule[string, int]
+		interval Interval[int]
+		want     bool
+	}{
+		{
+			name:     "empty schedule",
+			schedule: nil,
+			interval: iv(1, 2),
+			want:     false,
+		},
+		{
+			name: "non-overlapping interval",
+			schedule: Schedule[string, int]{
+				"Math": iv(1, 2),
+				"Art":  iv(4, 5),
+			},
+			interval: iv(2, 4),
+			want:     false,
+		},
+		{
+			name: "touching interval",
+			schedule: Schedule[string, int]{
+				"Math": iv(1, 2),
+			},
+			interval: iv(2, 3),
+			want:     false,
+		},
+		{
+			name: "overlapping interval",
+			schedule: Schedule[string, int]{
+				"Math": iv(1, 3),
+			},
+			interval: iv(2, 4),
+			want:     true,
+		},
+		{
+			name: "contained interval",
+			schedule: Schedule[string, int]{
+				"Math": iv(1, 5),
+			},
+			interval: iv(2, 4),
+			want:     true,
+		},
+		{
+			name: "overlaps one of many",
+			schedule: Schedule[string, int]{
+				"Math":    iv(1, 2),
+				"Science": iv(3, 6),
+				"Art":     iv(7, 8),
+			},
+			interval: iv(5, 7),
+			want:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.schedule.Overlaps(tt.interval); got != tt.want {
+				t.Errorf("schedule.Overlaps(%v) = %v, want %v", tt.interval, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSchedule_OrderedKeys(t *testing.T) {
 	iv := func(start, end int) Interval[int] {
 		i, err := New(start, end)
