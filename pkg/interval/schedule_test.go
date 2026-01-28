@@ -437,6 +437,62 @@ func TestSchedule_MaximalFor(t *testing.T) {
 	}
 }
 
+func TestSchedule_Clone(t *testing.T) {
+	iv := func(start, end int) Interval[int] {
+		i, err := New(start, end)
+		if err != nil {
+			t.Fatalf("New(%v, %v) failed: %v", start, end, err)
+		}
+		return i
+	}
+
+	tests := []struct {
+		name     string
+		schedule Schedule[string, int]
+	}{
+		{
+			name:     "nil schedule",
+			schedule: nil,
+		},
+		{
+			name:     "empty schedule",
+			schedule: Schedule[string, int]{},
+		},
+		{
+			name: "non-empty schedule",
+			schedule: Schedule[string, int]{
+				"Math":    iv(1, 2),
+				"History": iv(3, 5),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clone := tt.schedule.Clone()
+			if !clone.Equals(tt.schedule) {
+				t.Fatalf("clone.Equals(schedule) = false, want true (clone %v, schedule %v)", clone, tt.schedule)
+			}
+			if &clone == &tt.schedule {
+				t.Fatalf("clone and schedule share the same map reference")
+			}
+			if tt.schedule == nil {
+				if clone == nil {
+					t.Fatalf("expected clone to be non-nil for nil schedule")
+				}
+			} else if len(tt.schedule) > 0 {
+				for k := range tt.schedule {
+					clone[k] = iv(9, 10)
+					break
+				}
+				if !tt.schedule.Equals(tt.schedule) {
+					t.Fatalf("original schedule mutated after clone modification: %v", tt.schedule)
+				}
+			}
+		})
+	}
+}
+
 func TestSchedule_OrderedKeys(t *testing.T) {
 	iv := func(start, end int) Interval[int] {
 		i, err := New(start, end)

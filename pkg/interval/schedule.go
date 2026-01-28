@@ -84,7 +84,7 @@ func GroupIntervalSchedulingMaximization[K comparable, T cmp.Ordered](groups []G
 		// If so, add it to the set.
 		if idx == len(groups) {
 			if current.MaximalFor(groups) {
-				results = appendUniqueSchedule(results, cloneSchedule(current))
+				results = appendUniqueSchedule(results, current.Clone())
 			}
 			return
 		}
@@ -156,9 +156,10 @@ func (s Schedule[K, T]) MaximalFor(groups []Group[K, T]) bool {
 	return true
 }
 
-func cloneSchedule[K comparable, T cmp.Ordered](schedule Schedule[K, T]) Schedule[K, T] {
-	clone := make(Schedule[K, T], len(schedule))
-	for k, v := range schedule {
+// Clone returns a shallow copy of the schedule.
+func (s Schedule[K, T]) Clone() Schedule[K, T] {
+	clone := make(Schedule[K, T], len(s))
+	for k, v := range s {
 		clone[k] = v
 	}
 	return clone
