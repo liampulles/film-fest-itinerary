@@ -20,6 +20,8 @@ var (
 //
 // For using times and intervals, simply use the unix epoch
 // values.
+//
+// Struct equality is sufficient to test Interval equality.
 type Interval[T cmp.Ordered] struct {
 	start T
 	end   T
