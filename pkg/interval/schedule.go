@@ -78,6 +78,8 @@ func GroupIntervalSchedulingMaximization[K comparable, T cmp.Ordered](groups []G
 	var results []Schedule[K, T]
 	current := make(Schedule[K, T])
 
+	// Do a depth first search through the options. That is, pick an interval from the first
+	// group, then pick an interval form the next group (if its compatible), etc.
 	var dfs func(idx int)
 	dfs = func(idx int) {
 		// We're at the last group - check if we've made a maximal group.
