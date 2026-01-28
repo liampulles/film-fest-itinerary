@@ -47,11 +47,11 @@ func TestGroupIntervalSchedulingMaximization(t *testing.T) {
 			name: "Multiple options: Math has two slots, one overlaps with Science",
 			groups: []Group[string, int]{
 				{
-					Key: "Math",
+					Key:       "Math",
 					Intervals: []Interval[int]{iv(9, 10), iv(14, 15)},
 				},
 				{
-					Key: "Science",
+					Key:       "Science",
 					Intervals: []Interval[int]{iv(9, 10)},
 				},
 			},
@@ -265,6 +265,67 @@ func TestSchedule_Equals(t *testing.T) {
 			}
 			if got := tt.s2.Equals(tt.s1); got != tt.want {
 				t.Errorf("s2.Equals(s1) = %v, want %v (symmetry check)", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSchedule_OrderedKeys(t *testing.T) {
+	iv := func(start, end int) Interval[int] {
+		i, err := New(start, end)
+		if err != nil {
+			t.Fatalf("New(%v, %v) failed: %v", start, end, err)
+		}
+		return i
+	}
+
+	tests := []struct {
+		name string
+		s    Schedule[string, int]
+		want []string
+	}{
+		{
+			name: "empty schedule",
+			s:    Schedule[string, int]{},
+			want: []string{},
+		},
+		{
+			name: "single entry",
+			s: Schedule[string, int]{
+				"Math": iv(9, 10),
+			},
+			want: []string{"Math"},
+		},
+		{
+			name: "some schedule",
+			s: Schedule[string, int]{
+				"History": iv(11, 12),
+				"Math":    iv(9, 10),
+				"Science": iv(10, 11),
+			},
+			want: []string{"Math", "Science", "History"},
+		},
+		{
+			name: "negative",
+			s: Schedule[string, int]{
+				"Afternoon": iv(13, 14),
+				"Early":     iv(-1, 1),
+				"Morning":   iv(8, 9),
+			},
+			want: []string{"Early", "Morning", "Afternoon"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.s.OrderedKeys()
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %d keys, want %d", len(got), len(tt.want))
+			}
+			for i := range tt.want {
+				if got[i] != tt.want[i] {
+					t.Fatalf("key %d = %q, want %q (got %v)", i, got[i], tt.want[i], got)
+				}
 			}
 		})
 	}

@@ -53,6 +53,14 @@ func (a Interval[T]) Overlaps(b Interval[T]) bool {
 	return a.start < b.end && b.start < a.end
 }
 
+// Can be used for sorting
+func Cmp[T cmp.Ordered](i, j Interval[T]) int {
+	if i.start != j.start {
+		return cmp.Compare(i.start, j.start)
+	}
+	return cmp.Compare(i.start, j.start)
+}
+
 // The relationship between two intervals is basically
 // how they overlap or else the order. Given intervals
 // a and b, you can read the different
@@ -66,8 +74,8 @@ const (
 	ContainsTouchingEnd
 	ContainsInMiddle
 	ContainedWithinTouchingStart
-	ContainsTouchingStart
 	Equals
+	ContainsTouchingStart
 	ContainedWithinInMiddle
 	ContainedWithinTouchingEnd
 	PartialOverlapAfter
