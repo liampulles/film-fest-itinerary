@@ -58,7 +58,7 @@ func Cmp[T cmp.Ordered](i, j Interval[T]) int {
 	if i.start != j.start {
 		return cmp.Compare(i.start, j.start)
 	}
-	return cmp.Compare(i.start, j.start)
+	return cmp.Compare(i.end, j.end)
 }
 
 // The relationship between two intervals is basically

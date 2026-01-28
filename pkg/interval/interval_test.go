@@ -131,3 +131,27 @@ func TestRelationship(t *testing.T) {
 		})
 	}
 }
+
+func TestCmp(t *testing.T) {
+	tests := []struct {
+		name string
+		i, j [2]int
+		want int
+	}{
+		{"start less", [2]int{1, 5}, [2]int{2, 6}, -1},
+		{"start greater", [2]int{3, 5}, [2]int{2, 6}, 1},
+		{"start equal end less", [2]int{2, 4}, [2]int{2, 6}, -1},
+		{"start equal end greater", [2]int{2, 8}, [2]int{2, 6}, 1},
+		{"equal", [2]int{2, 6}, [2]int{2, 6}, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			i, _ := New(tt.i[0], tt.i[1])
+			j, _ := New(tt.j[0], tt.j[1])
+			if got := Cmp(i, j); got != tt.want {
+				t.Errorf("Cmp(%v, %v) = %v, want %v", i, j, got, tt.want)
+			}
+		})
+	}
+}
