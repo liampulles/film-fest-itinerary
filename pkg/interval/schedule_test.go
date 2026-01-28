@@ -345,6 +345,98 @@ func TestSchedule_Overlaps(t *testing.T) {
 	}
 }
 
+func TestSchedule_MaximalFor(t *testing.T) {
+	iv := func(start, end int) Interval[int] {
+		i, err := New(start, end)
+		if err != nil {
+			t.Fatalf("New(%v, %v) failed: %v", start, end, err)
+		}
+		return i
+	}
+
+	tests := []struct {
+		name     string
+		schedule Schedule[string, int]
+		groups   []Group[string, int]
+		want     bool
+	}{
+		{
+			name:     "no schedule, no groups",
+			schedule: nil,
+			groups:   nil,
+			want:     true,
+		},
+		{
+			name:     "empty schedule is not maximal when a group fits",
+			schedule: Schedule[string, int]{},
+			groups: []Group[string, int]{
+				{Key: "Math", Intervals: []Interval[int]{iv(1, 2), iv(4, 5)}},
+				{Key: "Science", Intervals: []Interval[int]{iv(2, 3)}},
+			},
+			want: false,
+		},
+		{
+			name: "schedule with one group still not maximal",
+			schedule: Schedule[string, int]{
+				"Math": iv(1, 2),
+			},
+			groups: []Group[string, int]{
+				{Key: "Math", Intervals: []Interval[int]{iv(1, 2), iv(1, 3)}},
+				{Key: "Science", Intervals: []Interval[int]{iv(2, 3), iv(4, 6)}},
+				{Key: "History", Intervals: []Interval[int]{iv(6, 7)}},
+			},
+			want: false,
+		},
+		{
+			name: "maximal because remaining group overlaps",
+			schedule: Schedule[string, int]{
+				"Math":    iv(1, 3),
+				"History": iv(4, 5),
+			},
+			groups: []Group[string, int]{
+				{Key: "Math", Intervals: []Interval[int]{iv(0, 2), iv(1, 3)}},
+				{Key: "History", Intervals: []Interval[int]{iv(4, 5)}},
+				{Key: "Science", Intervals: []Interval[int]{iv(2, 4), iv(3, 5)}},
+			},
+			want: true,
+		},
+		{
+			name: "maximal with multiple scheduled entries",
+			schedule: Schedule[string, int]{
+				"Math":    iv(1, 2),
+				"History": iv(3, 4),
+			},
+			groups: []Group[string, int]{
+				{Key: "Math", Intervals: []Interval[int]{iv(1, 2)}},
+				{Key: "History", Intervals: []Interval[int]{iv(3, 4)}},
+				{Key: "Science", Intervals: []Interval[int]{iv(1, 3), iv(2, 5)}},
+			},
+			want: true,
+		},
+		{
+			name: "not maximal when one of multiple intervals can fit",
+			schedule: Schedule[string, int]{
+				"Math":    iv(1, 2),
+				"History": iv(3, 4),
+			},
+			groups: []Group[string, int]{
+				{Key: "Math", Intervals: []Interval[int]{iv(1, 2), iv(1, 3)}},
+				{Key: "History", Intervals: []Interval[int]{iv(3, 4)}},
+				{Key: "Science", Intervals: []Interval[int]{iv(1, 3), iv(5, 6), iv(6, 7)}},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.schedule.MaximalFor(tt.groups); got != tt.want {
+				t.Errorf("schedule.MaximalFor(groups) = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSchedule_OrderedKeys(t *testing.T) {
 	iv := func(start, end int) Interval[int] {
 		i, err := New(start, end)

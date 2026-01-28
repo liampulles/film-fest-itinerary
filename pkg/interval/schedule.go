@@ -83,7 +83,7 @@ func GroupIntervalSchedulingMaximization[K comparable, T cmp.Ordered](groups []G
 		// We're at the last group - check if we've made a maximal group.
 		// If so, add it to the set.
 		if idx == len(groups) {
-			if isMaximalSchedule(current, groups) {
+			if current.MaximalFor(groups) {
 				results = appendUniqueSchedule(results, cloneSchedule(current))
 			}
 			return
@@ -132,18 +132,19 @@ func (s Schedule[K, T]) Overlaps(interval Interval[T]) bool {
 	return false
 }
 
-func isMaximalSchedule[K comparable, T cmp.Ordered](schedule Schedule[K, T], groups []Group[K, T]) bool {
+// MaximalFor checks whether the schedule is maximal with respect to the given groups.
+func (s Schedule[K, T]) MaximalFor(groups []Group[K, T]) bool {
 	for _, group := range groups {
 		// If we've already got the group in the schedule, then
 		// we don't need to check it.
-		if _, exists := schedule[group.Key]; exists {
+		if _, exists := s[group.Key]; exists {
 			continue
 		}
 
 		// So the group is NOT in the schedule. Is there a
 		// gap where one of this group's intervals could fit?
 		for _, interval := range group.Intervals {
-			if !schedule.Overlaps(interval) {
+			if !s.Overlaps(interval) {
 				// There is a gap, which means this group could have
 				// been included, which means this schedule
 				// is not maximal (the schedule with this group
