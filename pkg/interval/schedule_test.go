@@ -270,7 +270,7 @@ func TestSchedule_Equals(t *testing.T) {
 	}
 }
 
-func TestSchedule_Overlaps(t *testing.T) {
+func TestSchedule_GapFor(t *testing.T) {
 	iv := func(start, end int) Interval[int] {
 		i, err := New(start, end)
 		if err != nil {
@@ -289,7 +289,7 @@ func TestSchedule_Overlaps(t *testing.T) {
 			name:     "empty schedule",
 			schedule: nil,
 			interval: iv(1, 2),
-			want:     false,
+			want:     true,
 		},
 		{
 			name: "non-overlapping interval",
@@ -298,7 +298,7 @@ func TestSchedule_Overlaps(t *testing.T) {
 				"Art":  iv(4, 5),
 			},
 			interval: iv(2, 4),
-			want:     false,
+			want:     true,
 		},
 		{
 			name: "touching interval",
@@ -306,7 +306,7 @@ func TestSchedule_Overlaps(t *testing.T) {
 				"Math": iv(1, 2),
 			},
 			interval: iv(2, 3),
-			want:     false,
+			want:     true,
 		},
 		{
 			name: "overlapping interval",
@@ -314,7 +314,7 @@ func TestSchedule_Overlaps(t *testing.T) {
 				"Math": iv(1, 3),
 			},
 			interval: iv(2, 4),
-			want:     true,
+			want:     false,
 		},
 		{
 			name: "contained interval",
@@ -322,7 +322,7 @@ func TestSchedule_Overlaps(t *testing.T) {
 				"Math": iv(1, 5),
 			},
 			interval: iv(2, 4),
-			want:     true,
+			want:     false,
 		},
 		{
 			name: "overlaps one of many",
@@ -332,14 +332,24 @@ func TestSchedule_Overlaps(t *testing.T) {
 				"Art":     iv(7, 8),
 			},
 			interval: iv(5, 7),
+			want:     false,
+		},
+		{
+			name: "gap within many",
+			schedule: Schedule[string, int]{
+				"Math":    iv(1, 2),
+				"Science": iv(4, 6),
+				"Art":     iv(8, 9),
+			},
+			interval: iv(2, 4),
 			want:     true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.schedule.Overlaps(tt.interval); got != tt.want {
-				t.Errorf("schedule.Overlaps(%v) = %v, want %v", tt.interval, got, tt.want)
+			if got := tt.schedule.GapFor(tt.interval); got != tt.want {
+				t.Errorf("schedule.GapFor(%v) = %v, want %v", tt.interval, got, tt.want)
 			}
 		})
 	}

@@ -103,7 +103,7 @@ func GroupIntervalSchedulingMaximization[K comparable, T cmp.Ordered](groups []G
 		// So this group is not in our schedule yet. Then see
 		// if there is any gap where we could fit in one of its intervals.
 		for _, interval := range group.Intervals {
-			if !current.Overlaps(interval) {
+			if current.GapFor(interval) {
 				// There is a gap. So...
 				// -> Temporarily add it to the WIP schedule
 				current[group.Key] = interval
@@ -124,14 +124,14 @@ func GroupIntervalSchedulingMaximization[K comparable, T cmp.Ordered](groups []G
 	return results
 }
 
-// Overlaps checks whether the given interval overlaps with any entry in the schedule.
-func (s Schedule[K, T]) Overlaps(interval Interval[T]) bool {
+// GapFor checks whether the given interval does NOT overlap any entry in the schedule.
+func (s Schedule[K, T]) GapFor(interval Interval[T]) bool {
 	for _, existing := range s {
 		if interval.Overlaps(existing) {
-			return true
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // MaximalFor checks whether the schedule is maximal with respect to the given groups.
@@ -146,7 +146,7 @@ func (s Schedule[K, T]) MaximalFor(groups []Group[K, T]) bool {
 		// So the group is NOT in the schedule. Is there a
 		// gap where one of this group's intervals could fit?
 		for _, interval := range group.Intervals {
-			if !s.Overlaps(interval) {
+			if s.GapFor(interval) {
 				// There is a gap, which means this group could have
 				// been included, which means this schedule
 				// is not maximal (the schedule with this group
