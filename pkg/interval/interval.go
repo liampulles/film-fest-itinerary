@@ -39,6 +39,16 @@ func New[T cmp.Ordered](start, end T) (Interval[T], error) {
 	}, nil
 }
 
+// Start returns the interval's start value.
+func (a Interval[T]) Start() T {
+	return a.start
+}
+
+// End returns the interval's end value.
+func (a Interval[T]) End() T {
+	return a.end
+}
+
 func (a Interval[T]) Before(b Interval[T]) bool {
 	return a.start < b.start
 }

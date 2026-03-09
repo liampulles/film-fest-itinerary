@@ -59,6 +59,7 @@ func RunJFFWebtickets(args []string) error {
 		"name",
 		"start_datetime",
 		"duration_minutes",
+		"q_and_a",
 	})
 
 	seen := make(map[string]struct{})
@@ -93,6 +94,7 @@ type filmLine struct {
 	Name            string
 	StartTime       time.Time
 	DurationMinutes int
+	QandA           bool
 }
 
 func parseFilmLine(line string, loc *time.Location) (filmLine, bool) {
@@ -128,6 +130,7 @@ func parseFilmLine(line string, loc *time.Location) (filmLine, bool) {
 		Name:            name,
 		StartTime:       startTime,
 		DurationMinutes: durationMinutes,
+		QandA:           hasQA,
 	}, true
 }
 
@@ -190,6 +193,7 @@ func writeFilmRow(writer *csv.Writer, cinemaName string, film filmLine) {
 		film.Name,
 		film.StartTime.Format(time.RFC3339),
 		strconv.Itoa(film.DurationMinutes),
+		strconv.FormatBool(film.QandA),
 	})
 }
 
