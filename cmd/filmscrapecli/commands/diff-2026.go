@@ -1,19 +1,28 @@
 package commands
 
 import (
-	"errors"
+	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
-// errTooManyRequests is returned by fetchDocument when the server responds with
-// HTTP 429, indicating we are being rate limited.
-var errTooManyRequests = errors.New("rate limited (HTTP 429 Too Many Requests)")
+const (
+	// scrapeTimeout bounds the whole detail-scraping run.
+	scrapeTimeout = 15 * time.Minute
+	// scrapeDelay is the initial delay between page fetches. The site rate
+	// limits per-IP, so we fetch serially; the delay doubles on failure and
+	// resets on success (see mapWithBackoff).
+	scrapeDelay = 3 * time.Second
+)
 
 // mainURL is the DIFF 2026 film listing page.
 const mainURL = "https://ccadiff.ukzn.ac.za/films-2026/"
@@ -66,29 +75,45 @@ func RunDIFF2026(args []string) error {
 		return fmt.Errorf("usage: filmscrapecli diff-2026")
 	}
 
-	urls, err := getFilmURLs(mainURL)
+	urls, err := getFilmURLs(context.Background(), mainURL)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%v\n", urls)
+	details, err := getAllFilmDetails(urls)
+	if err != nil {
+		return err
+	}
+
+	out, err := json.MarshalIndent(details, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(out))
 
 	return nil
 }
 
 // fetchDocument retrieves url over HTTP and parses the response body into a
-// goquery document.
-func fetchDocument(url string) (*goquery.Document, error) {
-	resp, err := http.Get(url)
+// goquery document. The request is bound to ctx, so a cancelled or expired
+// context aborts an in-flight fetch.
+func fetchDocument(ctx context.Context, url string) (*goquery.Document, error) {
+	log.Printf("fetching %s", url)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return nil, errTooManyRequests
-	}
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("non-ok response for %s: %s", url, resp.Status)
 		return nil, fmt.Errorf("http error: %s", resp.Status)
 	}
 
@@ -97,8 +122,8 @@ func fetchDocument(url string) (*goquery.Document, error) {
 
 // getFilmURLs fetches the main festival page and returns the URLs of every
 // film detail page linked from it, de-duplicated and in first-seen order.
-func getFilmURLs(pageURL string) ([]string, error) {
-	doc, err := fetchDocument(pageURL)
+func getFilmURLs(ctx context.Context, pageURL string) ([]string, error) {
+	doc, err := fetchDocument(ctx, pageURL)
 	if err != nil {
 		return nil, err
 	}
@@ -125,8 +150,8 @@ func getFilmURLs(pageURL string) ([]string, error) {
 }
 
 // getFilmDetails fetches a single film detail page and extracts its details.
-func getFilmDetails(pageURL string) (filmDetails, error) {
-	doc, err := fetchDocument(pageURL)
+func getFilmDetails(ctx context.Context, pageURL string) (filmDetails, error) {
+	doc, err := fetchDocument(ctx, pageURL)
 	if err != nil {
 		return filmDetails{}, err
 	}
@@ -146,6 +171,67 @@ func getFilmDetails(pageURL string) (filmDetails, error) {
 	return details, nil
 }
 
+// getAllFilmDetails fetches the detail pages for every URL serially and returns
+// the parsed details in the same order. The whole run is bounded by
+// scrapeTimeout.
+func getAllFilmDetails(urls []string) ([]filmDetails, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), scrapeTimeout)
+	defer cancel()
+
+	return mapWithBackoff(ctx, urls, getFilmDetails, scrapeDelay)
+}
+
+// mapWithBackoff applies fn to each input serially, in order, sleeping delay
+// before every call. When a call fails (for any reason) it doubles the delay
+// and retries the same input, continuing to double on each further failure;
+// a success resets the delay to its initial value before moving on. The only
+// thing that stops retrying is ctx — once it is cancelled or its deadline
+// passes, mapWithBackoff returns ctx's error. Results are returned in input
+// order.
+func mapWithBackoff[In, Out any](
+	ctx context.Context,
+	inputs []In,
+	fn func(context.Context, In) (Out, error),
+	delay time.Duration,
+) ([]Out, error) {
+	results := make([]Out, 0, len(inputs))
+	currentDelay := delay
+
+	for _, in := range inputs {
+		for {
+			if err := sleepWithContext(ctx, currentDelay); err != nil {
+				return nil, err
+			}
+
+			out, err := fn(ctx, in)
+			if err == nil {
+				results = append(results, out)
+				currentDelay = delay
+				break
+			}
+
+			// Failed — back off and retry the same input.
+			currentDelay *= 2
+		}
+	}
+
+	return results, nil
+}
+
+// sleepWithContext waits for d, returning early with ctx's error if it is
+// cancelled first.
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
 // extractFilmType reads the type tag(s) above the title and returns the most
 // preferred one per filmTypePreference. Falls back to the first declared type
 // if none are listed.
@@ -158,10 +244,8 @@ func extractFilmType(hero *goquery.Selection) string {
 	})
 
 	for _, pref := range filmTypePreference {
-		for _, t := range types {
-			if t == pref {
-				return pref
-			}
+		if slices.Contains(types, pref) {
+			return pref
 		}
 	}
 	if len(types) > 0 {
