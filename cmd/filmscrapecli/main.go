@@ -20,6 +20,10 @@ func main() {
 		if err := commands.RunJFFWebtickets(args); err != nil {
 			log.Fatal(err)
 		}
+	case "diff-2026":
+		if err := commands.RunDIFF2026(args); err != nil {
+			log.Fatal(err)
+		}
 	default:
 		log.Fatalf("unknown command: %s", command)
 	}
