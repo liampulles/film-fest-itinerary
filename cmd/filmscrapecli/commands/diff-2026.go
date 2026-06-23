@@ -2,10 +2,12 @@ package commands
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"slices"
 	"strconv"
@@ -85,14 +87,62 @@ func RunDIFF2026(args []string) error {
 		return err
 	}
 
-	out, err := json.MarshalIndent(details, "", "  ")
-	if err != nil {
+	return writeFilmsCSV(os.Stdout, details)
+}
+
+// writeFilmsCSV writes the films to w as CSV, one row per screening (a film
+// with multiple screenings spans multiple rows). A film with no screenings
+// still gets a single row with empty screening columns.
+func writeFilmsCSV(w io.Writer, films []filmDetails) error {
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	if err := writer.Write([]string{
+		"name",
+		"year",
+		"duration_minutes",
+		"countries",
+		"languages",
+		"type",
+		"synopsis",
+		"screening_date",
+		"screening_time",
+		"cinema",
+	}); err != nil {
 		return err
 	}
 
-	fmt.Println(string(out))
+	for _, film := range films {
+		row := func(date, t, cinema string) []string {
+			return []string{
+				film.Name,
+				strconv.Itoa(film.Year),
+				strconv.Itoa(film.Duration),
+				film.Countries,
+				film.Languages,
+				film.Type,
+				film.Synopsis,
+				date,
+				t,
+				cinema,
+			}
+		}
 
-	return nil
+		if len(film.Screenings) == 0 {
+			if err := writer.Write(row("", "", "")); err != nil {
+				return err
+			}
+			continue
+		}
+
+		for _, s := range film.Screenings {
+			if err := writer.Write(row(s.Date, s.Time, s.Cinema)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return writer.Error()
 }
 
 // fetchDocument retrieves url over HTTP and parses the response body into a
