@@ -53,6 +53,14 @@ var filmTypePreference = []string{
 	"Student Film",
 }
 
+// shortTypes are the film types that get packaged into short blocks when they
+// share a screening.
+var shortTypes = []string{
+	"DIFFXWOW Shorts",
+	"Short Film",
+	"Student Film",
+}
+
 // filmDetails describes a single film as scraped from its detail page.
 type filmDetails struct {
 	Name       string
@@ -86,6 +94,8 @@ func RunDIFF2026(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	details = groupShortBlocks(details)
 
 	return writeFilmsCSV(os.Stdout, details)
 }
@@ -229,6 +239,102 @@ func getAllFilmDetails(urls []string) ([]filmDetails, error) {
 	defer cancel()
 
 	return mapWithBackoff(ctx, urls, getFilmDetails, scrapeDelay)
+}
+
+// groupShortBlocks merges shorts that share a screening (same date, time and
+// cinema) into a single "Short Block" film — shorts are packaged into blocks
+// and shown together. Non-shorts pass through unchanged, and each block is
+// emitted at the position of its first short, preserving order.
+func groupShortBlocks(films []filmDetails) []filmDetails {
+	groups := make(map[string][]filmDetails)
+	for _, f := range films {
+		if isShort(f) && len(f.Screenings) > 0 {
+			key := screeningKey(f.Screenings[0])
+			groups[key] = append(groups[key], f)
+		}
+	}
+
+	var result []filmDetails
+	emitted := make(map[string]bool)
+	for _, f := range films {
+		if !isShort(f) || len(f.Screenings) == 0 {
+			result = append(result, f)
+			continue
+		}
+
+		key := screeningKey(f.Screenings[0])
+		if emitted[key] {
+			continue
+		}
+		emitted[key] = true
+		result = append(result, mergeShortBlock(groups[key]))
+	}
+
+	return result
+}
+
+// isShort reports whether a film is a short that can be packaged into a block.
+func isShort(f filmDetails) bool {
+	return slices.Contains(shortTypes, f.Type)
+}
+
+// screeningKey uniquely identifies a screening slot.
+func screeningKey(s screening) string {
+	return s.Date + "|" + s.Time + "|" + s.Cinema
+}
+
+// mergeShortBlock combines a group of shorts sharing a screening into one
+// "Short Block" film.
+func mergeShortBlock(shorts []filmDetails) filmDetails {
+	block := filmDetails{
+		Type:       "Short Block",
+		Synopsis:   "N/A",
+		Year:       shorts[0].Year,
+		Screenings: []screening{shorts[0].Screenings[0]},
+	}
+
+	var names, countries, languages []string
+	for _, s := range shorts {
+		names = append(names, s.Name)
+		block.Duration += s.Duration
+		if s.Year < block.Year {
+			block.Year = s.Year
+		}
+		countries = append(countries, splitList(s.Countries)...)
+		languages = append(languages, splitList(s.Languages)...)
+	}
+
+	block.Name = fmt.Sprintf("SHORTS (%s)", strings.Join(names, "; "))
+	block.Countries = strings.Join(uniqueInOrder(countries), ", ")
+	block.Languages = strings.Join(uniqueInOrder(languages), ", ")
+
+	return block
+}
+
+// splitList splits a comma-separated value into trimmed, non-empty parts.
+func splitList(s string) []string {
+	var parts []string
+	for p := range strings.SplitSeq(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			parts = append(parts, p)
+		}
+	}
+	return parts
+}
+
+// uniqueInOrder returns items with duplicates removed, preserving first-seen
+// order.
+func uniqueInOrder(items []string) []string {
+	seen := make(map[string]struct{})
+	var out []string
+	for _, it := range items {
+		if _, ok := seen[it]; ok {
+			continue
+		}
+		seen[it] = struct{}{}
+		out = append(out, it)
+	}
+	return out
 }
 
 // mapWithBackoff applies fn to each input serially, in order, sleeping delay
